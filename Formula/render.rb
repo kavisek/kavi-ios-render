@@ -1,7 +1,7 @@
 class Render < Formula
   desc "Kavi render app (macOS build)"
   homepage "https://github.com/kavisek/kavi-ios-render"
-  head "git@github.com:kavisek/kavi-ios-render.git", branch: "main"
+  head "ssh://git@github.com/kavisek/kavi-ios-render.git", branch: "main", using: :git
 
   depends_on :xcode => :build
 

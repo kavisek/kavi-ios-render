@@ -20,11 +20,13 @@ xcuserdata/
 
 ## Build generated
 build/
+build-release/
 DerivedData/
 *.moved-aside
 *.dSYM.zip
 *.dSYM
 *.ipa
+*.profraw
 
 # Swift Package Manager
 .build/

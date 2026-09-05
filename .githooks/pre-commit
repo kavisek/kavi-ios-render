@@ -1,0 +1,27 @@
+#!/bin/sh
+# Bumps the dev prerelease number in VERSION on every commit, e.g.
+# 0.0.0-dev.1 -> 0.0.0-dev.2. Leaves VERSION untouched if it doesn't
+# match the "<semver>-dev.<n>" shape (e.g. a real release version).
+
+VERSION_FILE="VERSION"
+
+if [ ! -f "$VERSION_FILE" ]; then
+    exit 0
+fi
+
+current=$(cat "$VERSION_FILE")
+
+case "$current" in
+    *-dev.*)
+        base=${current%-dev.*}
+        num=${current##*-dev.}
+        case "$num" in
+            ''|*[!0-9]*) exit 0 ;;
+        esac
+        next=$((num + 1))
+        printf '%s-dev.%s\n' "$base" "$next" > "$VERSION_FILE"
+        git add "$VERSION_FILE"
+        ;;
+esac
+
+exit 0

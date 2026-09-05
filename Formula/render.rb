@@ -9,13 +9,18 @@ class Render < Formula
   # building from the fetched source, this formula packages an app that was
   # already built outside Homebrew (see `make build-release` / `make install`).
   def install
-    prebuilt_app = ENV["RENDER_PREBUILT_APP"]
-    odie "Set $RENDER_PREBUILT_APP to a locally built render.app (run `make build-release` first)" if prebuilt_app.blank?
+    # Homebrew's build sandbox strips custom environment variables, so the
+    # path to the prebuilt app is handed off via a file instead of $ENV.
+    path_file = Pathname.new("/tmp/kavi-render-prebuilt-app-path")
+    odie "#{path_file} not found (run `make install`, not `brew install` directly)" unless path_file.exist?
 
-    app_path = Pathname.new(prebuilt_app)
-    odie "#{app_path} does not exist" unless app_path.exist?
+    app_path = Pathname.new(path_file.read.strip)
+    odie "#{app_path} does not exist (run `make build-release` first)" unless app_path.exist?
 
-    prefix.install app_path
+    # `prefix.install` chmods the source in place, which the sandbox denies
+    # for a path outside Homebrew's own temp/cache/Cellar; a plain recursive
+    # copy avoids touching the source at all.
+    system "cp", "-R", app_path, prefix/app_path.basename
     bin.write_exec_script prefix/app_path.basename/"Contents/MacOS/render"
   end
 

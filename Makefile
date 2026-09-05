@@ -46,4 +46,5 @@ build-release:
 # prefix, rather than building from source itself.
 install: build-release
 	brew tap $(TAP) $(TAP_URL)
-	RENDER_PREBUILT_APP="$(RELEASE_APP)" brew install --HEAD --build-from-source $(FORMULA)
+	@echo "$(RELEASE_APP)" > /tmp/kavi-render-prebuilt-app-path
+	brew install --HEAD --build-from-source $(FORMULA)

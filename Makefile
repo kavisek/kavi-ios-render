@@ -4,7 +4,11 @@ CONFIGURATION := Debug
 DESTINATION := generic/platform=iOS Simulator
 SIMULATOR_NAME := iPhone 17
 
-.PHONY: start build clean
+TAP := kavisek/render
+TAP_URL := git@github.com:kavisek/kavi-ios-render.git
+FORMULA := $(TAP)/render
+
+.PHONY: start build clean install
 
 start: build
 	@echo "Booting simulator '$(SIMULATOR_NAME)'..."
@@ -25,3 +29,10 @@ build:
 
 clean:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) clean
+
+# Installs the macOS build of this app via Homebrew, tapping and building from
+# source straight off this private repo over SSH. Requires your SSH key to
+# already have access to $(TAP_URL).
+install:
+	brew tap $(TAP) $(TAP_URL)
+	brew install --HEAD --build-from-source $(FORMULA)

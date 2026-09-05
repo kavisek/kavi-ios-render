@@ -3,20 +3,20 @@ class Render < Formula
   homepage "https://github.com/kavisek/kavi-ios-render"
   head "ssh://git@github.com/kavisek/kavi-ios-render.git", branch: "main", using: :git
 
-  depends_on :xcode => :build
-
+  # Homebrew's own build sandbox can't compile this project: Xcode's Swift
+  # macro plugin server (used by SwiftUI's #Preview macro) tries to sandbox
+  # itself too, and macOS refuses that nested sandbox_apply. So instead of
+  # building from the fetched source, this formula packages an app that was
+  # already built outside Homebrew (see `make build-release` / `make install`).
   def install
-    system "xcodebuild",
-           "-project", "render/render.xcodeproj",
-           "-scheme", "render",
-           "-configuration", "Release",
-           "-derivedDataPath", "build",
-           "CODE_SIGNING_ALLOWED=NO",
-           "build"
+    prebuilt_app = ENV["RENDER_PREBUILT_APP"]
+    odie "Set $RENDER_PREBUILT_APP to a locally built render.app (run `make build-release` first)" if prebuilt_app.blank?
 
-    app = Dir["build/Build/Products/Release/*.app"].first
-    prefix.install app
-    bin.write_exec_script prefix/File.basename(app)/"Contents/MacOS/render"
+    app_path = Pathname.new(prebuilt_app)
+    odie "#{app_path} does not exist" unless app_path.exist?
+
+    prefix.install app_path
+    bin.write_exec_script prefix/app_path.basename/"Contents/MacOS/render"
   end
 
   test do

@@ -7,8 +7,9 @@ SIMULATOR_NAME := iPhone 17
 TAP := kavisek/render
 TAP_URL := git@github.com:kavisek/kavi-ios-render.git
 FORMULA := $(TAP)/render
+RELEASE_APP := $(CURDIR)/build-release/Build/Products/Release/render.app
 
-.PHONY: start build clean install
+.PHONY: start build build-release clean install
 
 start: build
 	@echo "Booting simulator '$(SIMULATOR_NAME)'..."
@@ -30,9 +31,19 @@ build:
 clean:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) clean
 
-# Installs the macOS build of this app via Homebrew, tapping and building from
-# source straight off this private repo over SSH. Requires your SSH key to
-# already have access to $(TAP_URL).
-install:
+# Builds the macOS Release .app directly (unsandboxed). Homebrew's own build
+# sandbox can't compile this project itself: Xcode's Swift macro plugin server
+# (used by SwiftUI's #Preview macro) tries to sandbox itself too, and macOS
+# refuses that nested sandbox_apply. So Homebrew never runs xcodebuild here —
+# it just packages a build made outside of it.
+build-release:
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
+		-derivedDataPath build-release CODE_SIGNING_ALLOWED=NO build
+
+# Installs the macOS build of this app via Homebrew. Taps this private repo
+# over SSH (requires your SSH key to already have access to $(TAP_URL)) and
+# has the formula copy the app built by `build-release` into the Homebrew
+# prefix, rather than building from source itself.
+install: build-release
 	brew tap $(TAP) $(TAP_URL)
-	brew install --HEAD --build-from-source $(FORMULA)
+	RENDER_PREBUILT_APP="$(RELEASE_APP)" brew install --HEAD --build-from-source $(FORMULA)

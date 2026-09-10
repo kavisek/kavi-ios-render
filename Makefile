@@ -43,8 +43,11 @@ build-release:
 # Installs the macOS build of this app via Homebrew. Taps this private repo
 # over SSH (requires your SSH key to already have access to $(TAP_URL)) and
 # has the formula copy the app built by `build-release` into the Homebrew
-# prefix, rather than building from source itself.
+# prefix, rather than building from source itself. Re-taps and reinstalls
+# each run so the freshly built app and the latest formula always win.
 install: build-release
-	brew tap $(TAP) $(TAP_URL)
 	@echo "$(RELEASE_APP)" > /tmp/kavi-render-prebuilt-app-path
+	-brew untap $(TAP) 2>/dev/null
+	brew tap $(TAP) $(TAP_URL)
+	-brew uninstall $(FORMULA) 2>/dev/null
 	brew install --HEAD --build-from-source $(FORMULA)

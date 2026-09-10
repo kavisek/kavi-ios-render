@@ -28,8 +28,7 @@ enum CLI {
     }
 
     private static func runVersion() {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
-        print("render \(version)")
+        print("render \(Version.current)")
     }
 
     private static func runHelp() {

@@ -7,6 +7,8 @@ enum CLI {
         guard let command = arguments.first else { return nil }
 
         switch command {
+        case "start", "--start", "-s":
+            return nil
         case "add", "--add", "-a":
             runAdd()
             return 0
@@ -36,11 +38,12 @@ enum CLI {
         Usage: render [command]
 
         Commands:
+          start            Start the app                (--start, -s)
           add              Add [not yet implemented]  (--add, -a)
           version          Print the version           (--version, -v)
           help             Show this help message       (--help, -h)
 
-        Running render with no command launches the app.
+        Running render with no command also starts the app.
         """)
     }
 }

@@ -50,4 +50,4 @@ install: build-release
 	-brew untap $(TAP) 2>/dev/null
 	brew tap $(TAP) $(TAP_URL)
 	-brew uninstall $(FORMULA) 2>/dev/null
-	brew install --HEAD --build-from-source $(FORMULA)
+	brew install --HEAD --build-from-source --yes $(FORMULA)

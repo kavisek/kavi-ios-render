@@ -3,6 +3,7 @@
 //  renderTests
 //
 
+#if os(macOS)
 import Testing
 @testable import render
 
@@ -36,3 +37,4 @@ struct CLITests {
         #expect(CLI.run(arguments: ["bogus"]) == 1)
     }
 }
+#endif

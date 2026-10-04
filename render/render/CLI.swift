@@ -1,3 +1,4 @@
+#if os(macOS)
 import Foundation
 
 enum CLI {
@@ -54,3 +55,4 @@ enum CLI {
         """)
     }
 }
+#endif

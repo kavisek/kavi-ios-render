@@ -6,12 +6,14 @@
 import SwiftUI
 import AVKit
 
-/// The video surface with AVKit's native playback controls.
+/// The video surface with AVKit's native playback controls: `AVPlayerView`
+/// on macOS, `AVPlayerViewController` on iOS and iPadOS.
 ///
-/// Wraps AppKit's `AVPlayerView` rather than SwiftUI's `VideoPlayer`: on
-/// macOS 27.0.1, `VideoPlayer` aborts inside `_AVKit_SwiftUI` (Swift runtime
+/// Wraps AVKit directly rather than SwiftUI's `VideoPlayer`: on macOS
+/// 27.0.1, `VideoPlayer` aborts inside `_AVKit_SwiftUI` (Swift runtime
 /// `getSuperclassMetadata` fatal error) the first time it's shown, which
-/// crashed the app as soon as a video was picked.
+/// crashed the app as soon as a video was picked (adr/001).
+#if os(macOS)
 struct PlayerView: NSViewRepresentable {
     let player: AVPlayer
 
@@ -33,3 +35,24 @@ struct PlayerView: NSViewRepresentable {
         view.player = nil
     }
 }
+#else
+struct PlayerView: UIViewControllerRepresentable {
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        return controller
+    }
+
+    func updateUIViewController(_ controller: AVPlayerViewController, context: Context) {
+        if controller.player !== player {
+            controller.player = player
+        }
+    }
+
+    static func dismantleUIViewController(_ controller: AVPlayerViewController, coordinator: ()) {
+        controller.player = nil
+    }
+}
+#endif

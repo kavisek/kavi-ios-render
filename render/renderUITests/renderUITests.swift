@@ -18,9 +18,15 @@ final class renderUITests: XCTestCase {
         let app = launchApp()
 
         XCTAssertTrue(app.staticTexts["No Video Selected"].waitForExistence(timeout: 5))
+        #if os(macOS)
         XCTAssertTrue(app.buttons["Open Video…"].exists)
+        #else
+        XCTAssertTrue(app.buttons["openFilesButton"].exists)
+        XCTAssertTrue(app.buttons["openPhotosButton"].exists)
+        #endif
     }
 
+    #if os(macOS)
     /// End-to-end: pick an .mp4 through the real open panel and check the
     /// app is still running with the file loaded. Picking a file used to
     /// crash the app the moment the player view appeared.
@@ -36,18 +42,23 @@ final class renderUITests: XCTestCase {
         try await Task.sleep(for: .seconds(2))
         XCTAssertEqual(app.state, .runningForeground, "app crashed during playback")
     }
+    #endif
 
-    /// End-to-end: turn on the CRT filter over a playing video, switch
-    /// presets and drag a parameter slider.
+    /// End-to-end: turn on the CRT filter, switch presets, drag a parameter
+    /// slider and reset. On macOS this runs over a playing video; on iOS the
+    /// system file and Photos pickers can't be fed a fixture, so it checks
+    /// the panel on its own.
     @MainActor
     func testCRTFilterCanBeEnabledAndTuned() async throws {
         let app = launchApp()
+        #if os(macOS)
         let video = try await openVideo(in: app)
         defer { try? FileManager.default.removeItem(at: video) }
+        #endif
 
         let filtersButton = app.descendants(matching: .any)["filtersButton"]
         XCTAssertTrue(filtersButton.waitForExistence(timeout: 5))
-        filtersButton.click()
+        filtersButton.press()
 
         let toggle = app.descendants(matching: .any)["crtFilterToggle"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5), "filter panel never opened")
@@ -55,26 +66,34 @@ final class renderUITests: XCTestCase {
         XCTAssertTrue(slider.exists)
         XCTAssertFalse(slider.isEnabled, "parameters should be locked while the filter is off")
 
-        toggle.click()
+        #if os(macOS)
+        toggle.press()
+        #else
+        toggle.switches.firstMatch.press()
+        #endif
         XCTAssertTrue(slider.isEnabled, "parameters should unlock once the filter is on")
 
-        let picker = app.descendants(matching: .any)["crtPresetPicker"]
-        picker.click()
-        app.menuItems["Worn VHS"].click()
+        app.descendants(matching: .any)["crtPresetPicker"].press()
+        #if os(macOS)
+        app.menuItems["Worn VHS"].press()
+        #else
+        app.buttons["Worn VHS"].press()
+        #endif
         XCTAssertTrue(app.staticTexts["3.5 px"].waitForExistence(timeout: 2), "Worn VHS colour bleed not applied")
 
         slider.adjust(toNormalizedSliderPosition: 0.9)
-        XCTAssertTrue(app.buttons["Reset to Worn VHS"].isEnabled, "tweaking a slider should allow a reset")
-        app.buttons["Reset to Worn VHS"].click()
-        XCTAssertFalse(app.buttons["Reset to Worn VHS"].isEnabled)
+        let reset = app.buttons["Reset to Worn VHS"]
+        XCTAssertTrue(reset.isEnabled, "tweaking a slider should allow a reset")
+        reset.press()
+        XCTAssertFalse(reset.isEnabled)
 
         try await Task.sleep(for: .seconds(2))
         XCTAssertEqual(app.state, .runningForeground, "app crashed while filtering")
     }
 
-    /// Launches the app. macOS only lets it become active, which SwiftUI
-    /// waits for before showing the first window, while nobody is using
-    /// another app, so keep hands off the Mac while UI tests run.
+    /// Launches the app. On macOS it only becomes active, which SwiftUI waits
+    /// for before showing the first window, while nobody is using another
+    /// app, so keep hands off the Mac while UI tests run (adr/003).
     @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
@@ -82,6 +101,7 @@ final class renderUITests: XCTestCase {
         return app
     }
 
+    #if os(macOS)
     /// Picks a generated .mp4 through the open panel and waits until the app
     /// shows it as loaded. Returns the file so the caller can delete it.
     @MainActor
@@ -108,5 +128,17 @@ final class renderUITests: XCTestCase {
         )
         XCTAssertEqual(app.state, .runningForeground, "app crashed after opening the video")
         return video
+    }
+    #endif
+}
+
+private extension XCUIElement {
+    /// Click on macOS, tap on iOS.
+    func press() {
+        #if os(macOS)
+        click()
+        #else
+        tap()
+        #endif
     }
 }

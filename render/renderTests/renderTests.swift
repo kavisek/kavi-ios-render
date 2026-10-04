@@ -5,7 +5,11 @@
 //  Created by Kavi Sekhon on 2026-09-04.
 //
 
+#if os(macOS)
 import AppKit
+#else
+import UIKit
+#endif
 import AVFoundation
 import AVKit
 import SwiftUI
@@ -120,38 +124,16 @@ struct VideoPlayerModelTests {
 @MainActor
 struct PlayerRenderingTests {
 
-    private func render<V: View>(_ view: V) -> NSWindow {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
-            styleMask: [.titled, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: view)
-        window.contentView?.layoutSubtreeIfNeeded()
-        window.displayIfNeeded()
-        return window
-    }
-
-    private func findSubview<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
-        if let match = view as? T { return match }
-        for subview in view.subviews {
-            if let match = findSubview(type, in: subview) { return match }
-        }
-        return nil
-    }
-
     @Test func playerViewRendersWithAPlayer() async throws {
         let url = try await VideoFixture.makeMP4()
         defer { try? FileManager.default.removeItem(at: url) }
         let player = AVPlayer(url: url)
 
-        let window = render(PlayerView(player: player))
+        let window = TestWindow(PlayerView(player: player))
         defer { window.close() }
 
-        let playerView = try #require(findSubview(AVPlayerView.self, in: window.contentView!))
-        #expect(playerView.player === player)
+        let surface = try #require(window.playerSurface())
+        #expect(surface.player === player)
     }
 
     @Test func contentViewRendersALoadedVideo() async throws {
@@ -161,11 +143,11 @@ struct PlayerRenderingTests {
         let model = VideoPlayerModel()
         model.load(url: url)
 
-        let window = render(ContentView(model: model))
+        let window = TestWindow(ContentView(model: model))
         defer { window.close() }
 
-        let playerView = try #require(findSubview(AVPlayerView.self, in: window.contentView!))
-        #expect(playerView.player === model.player)
+        let surface = try #require(window.playerSurface())
+        #expect(surface.player === model.player)
     }
 
     /// Mirrors the real flow: the window is up showing the empty state, then
@@ -175,26 +157,99 @@ struct PlayerRenderingTests {
         defer { try? FileManager.default.removeItem(at: url) }
 
         let model = VideoPlayerModel()
-        let window = render(ContentView(model: model))
+        let window = TestWindow(ContentView(model: model))
         defer { window.close() }
-        window.makeKeyAndOrderFront(nil)
-        #expect(findSubview(AVPlayerView.self, in: window.contentView!) == nil)
+        #expect(window.playerSurface() == nil)
 
         model.load(url: url)
 
         let swapped = await waitUntil {
-            window.contentView?.layoutSubtreeIfNeeded()
-            window.displayIfNeeded()
-            return findSubview(AVPlayerView.self, in: window.contentView!) != nil
+            window.refresh()
+            return window.playerSurface() != nil
         }
         #expect(swapped, "the player view never appeared after loading")
-        let playerView = try #require(findSubview(AVPlayerView.self, in: window.contentView!))
-        #expect(playerView.player === model.player)
+        let surface = try #require(window.playerSurface())
+        #expect(surface.player === model.player)
     }
 
-    @Test func contentViewRendersEmptyState() throws {
-        let window = render(ContentView())
+    @Test func contentViewRendersEmptyState() {
+        let window = TestWindow(ContentView())
         defer { window.close() }
-        #expect(findSubview(AVPlayerView.self, in: window.contentView!) == nil)
+        #expect(window.playerSurface() == nil)
     }
+}
+
+/// Hosts a SwiftUI view in a real, on-screen window on either platform and
+/// finds the native AVKit player it created: `AVPlayerView` on macOS,
+/// `AVPlayerViewController` on iOS and iPadOS.
+@MainActor
+private final class TestWindow {
+    /// The AVKit player surface found in the window, and the player it shows.
+    struct PlayerSurface {
+        let player: AVPlayer?
+    }
+
+    #if os(macOS)
+    private let window: NSWindow
+
+    init<V: View>(_ view: V) {
+        window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
+            styleMask: [.titled, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: view)
+        window.makeKeyAndOrderFront(nil)
+        refresh()
+    }
+
+    func refresh() {
+        window.contentView?.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+    }
+
+    func playerSurface() -> PlayerSurface? {
+        find(AVPlayerView.self, in: window.contentView!).map { PlayerSurface(player: $0.player) }
+    }
+
+    func close() {
+        window.close()
+    }
+
+    private func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
+        if let match = view as? T { return match }
+        return view.subviews.lazy.compactMap { self.find(type, in: $0) }.first
+    }
+    #else
+    private let window: UIWindow
+
+    init<V: View>(_ view: V) {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        window = scene.map(UIWindow.init(windowScene:)) ?? UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = UIHostingController(rootView: view)
+        window.makeKeyAndVisible()
+        refresh()
+    }
+
+    func refresh() {
+        window.rootViewController?.view.setNeedsLayout()
+        window.layoutIfNeeded()
+    }
+
+    func playerSurface() -> PlayerSurface? {
+        find(in: window.rootViewController!).map { PlayerSurface(player: $0.player) }
+    }
+
+    func close() {
+        window.isHidden = true
+        window.rootViewController = nil
+    }
+
+    private func find(in controller: UIViewController) -> AVPlayerViewController? {
+        if let match = controller as? AVPlayerViewController { return match }
+        return controller.children.lazy.compactMap { self.find(in: $0) }.first
+    }
+    #endif
 }

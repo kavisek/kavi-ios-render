@@ -8,7 +8,14 @@ TAP_URL := git@github.com:kavisek/kavi-ios-render.git
 FORMULA := $(TAP)/render
 RELEASE_APP := $(CURDIR)/build-release/Build/Products/Release/render.app
 
-.PHONY: start build test build-release clean install
+# Simulators for the iOS / iPadOS targets; override e.g. `make start-ios IOS_SIM="iPhone 18 Pro"`.
+IOS_SIM ?= iPhone 17
+IPAD_SIM ?= iPad Pro 13-inch (M5)
+BUNDLE_ID := kavi.render
+SIM_DERIVED_DATA := $(CURDIR)/build-sim
+SIM_APP := $(SIM_DERIVED_DATA)/Build/Products/$(CONFIGURATION)-iphonesimulator/render.app
+
+.PHONY: start start-ios start-ipad add-video build test build-release clean install
 
 # Builds for macOS and opens the resulting .app directly (no simulator).
 start: build
@@ -17,6 +24,29 @@ start: build
 		awk -F' = ' '/ BUILT_PRODUCTS_DIR /{bp=$$2} / FULL_PRODUCT_NAME /{fn=$$2} END{print bp"/"fn}'); \
 	echo "Opening $$APP_PATH..."; \
 	open "$$APP_PATH"
+
+# Builds for the iOS Simulator, boots the device, installs and launches.
+start-ios:
+	@$(MAKE) --no-print-directory run-sim SIM="$(IOS_SIM)"
+
+start-ipad:
+	@$(MAKE) --no-print-directory run-sim SIM="$(IPAD_SIM)"
+
+run-sim:
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		-destination 'platform=iOS Simulator,name=$(SIM)' -derivedDataPath $(SIM_DERIVED_DATA) build
+	xcrun simctl bootstatus "$(SIM)" -b
+	@open -a Simulator 2>/dev/null || echo "Open the Simulator app to see the device."
+	xcrun simctl install "$(SIM)" "$(SIM_APP)"
+	xcrun simctl launch "$(SIM)" $(BUNDLE_ID)
+
+# Adds a video to a simulator's Photos library so the app's Photos button
+# can open it: `make add-video VIDEO=~/Movies/clip.mp4 [SIM="iPad Pro 13-inch (M5)"]`.
+SIM ?= $(IOS_SIM)
+add-video:
+	@test -n "$(VIDEO)" || (echo "usage: make add-video VIDEO=path/to/video.mp4 [SIM=\"$(IOS_SIM)\"]" && exit 1)
+	xcrun simctl bootstatus "$(SIM)" -b
+	xcrun simctl addmedia "$(SIM)" "$(VIDEO)"
 
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \

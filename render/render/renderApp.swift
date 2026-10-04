@@ -10,10 +10,13 @@ import SwiftUI
 @main
 struct RenderMain {
     static func main() {
+        #if os(macOS)
+        // Only the Mac app doubles as the `render` command-line tool.
         let arguments = Array(CommandLine.arguments.dropFirst())
         if let exitCode = CLI.run(arguments: arguments) {
             exit(exitCode)
         }
+        #endif
         renderApp.main()
     }
 }

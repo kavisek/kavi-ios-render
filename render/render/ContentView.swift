@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @State private var model: VideoPlayerModel
     @State private var isImporterPresented = false
+    @State private var isFilterPanelPresented = false
 
     init(model: VideoPlayerModel = VideoPlayerModel()) {
         _model = State(initialValue: model)
@@ -55,10 +56,22 @@ struct ContentView: View {
                         .foregroundStyle(.red)
                         .lineLimit(1)
                 }
+
+                Toggle(isOn: $isFilterPanelPresented) {
+                    Label("Filters", systemImage: "camera.filters")
+                }
+                .toggleStyle(.button)
+                .tint(model.isFilterEnabled ? .accentColor : nil)
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .accessibilityIdentifier("filtersButton")
             }
             .padding(10)
         }
         .frame(minWidth: 640, minHeight: 400)
+        .inspector(isPresented: $isFilterPanelPresented) {
+            FilterPanel(model: model)
+                .inspectorColumnWidth(min: 280, ideal: 320, max: 420)
+        }
         .fileImporter(
             isPresented: $isImporterPresented,
             allowedContentTypes: [.mpeg4Movie],

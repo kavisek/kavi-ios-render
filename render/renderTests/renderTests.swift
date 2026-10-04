@@ -14,7 +14,7 @@ import Testing
 
 /// Polls `condition` on the main actor until it holds or `timeout` passes.
 @MainActor
-private func waitUntil(timeout: Duration = .seconds(5), _ condition: () -> Bool) async -> Bool {
+func waitUntil(timeout: Duration = .seconds(5), _ condition: () -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + timeout
     while ContinuousClock.now < deadline {
         if condition() { return true }

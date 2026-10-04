@@ -10,7 +10,8 @@ import Foundation
 /// Generates small throwaway media files so tests don't depend on a real
 /// video being checked into the repo.
 enum VideoFixture {
-    /// Writes a short solid-colour H.264 .mp4 to a temporary location.
+    /// Writes a short H.264 .mp4 of mid-grey frames (brightness varies per
+    /// frame) to a temporary location.
     static func makeMP4(
         seconds: Int = 2,
         fps: Int32 = 30,
@@ -40,7 +41,7 @@ enum VideoFixture {
             while !input.isReadyForMoreMediaData {
                 try await Task.sleep(for: .milliseconds(5))
             }
-            let buffer = try makeFrame(size: size, pool: adaptor.pixelBufferPool, shade: UInt8(frame % 256))
+            let buffer = try makeFrame(size: size, pool: adaptor.pixelBufferPool, shade: UInt8(128 + frame % 64))
             let time = CMTime(value: CMTimeValue(frame), timescale: fps)
             guard adaptor.append(buffer, withPresentationTime: time) else {
                 throw writer.error ?? FixtureError.writeFailed

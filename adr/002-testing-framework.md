@@ -138,3 +138,7 @@ functions, with the CLI tests parameterized; about 0.6 s) and 2 UI tests
 - `renderUITestsLaunchTests` (Xcode's launch-screenshot template) is still
   in the target and runs under `make test`. Remove it or make it a real test
   if it adds no value.
+- UI tests need the Mac left idle while they run. macOS won't let the
+  XCUITest-launched app become active while someone is using another app,
+  and SwiftUI then never shows its first window, so every UI test fails with
+  "no matches found". See [003](003-crt-filter.md#ui-tests-need-an-idle-mac).

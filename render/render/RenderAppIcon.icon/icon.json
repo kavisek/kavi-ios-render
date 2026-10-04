@@ -1,0 +1,36 @@
+{
+  "fill" : {
+    "automatic-gradient" : "display-p3:0.00000,0.00000,0.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "M 2.svg",
+          "name" : "M 2",
+          "position" : {
+            "scale" : 9,
+            "translation-in-points" : [
+              4.14855,
+              0.5625
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

@@ -4,7 +4,7 @@ enum CLI {
     /// Handles CLI-style invocation. Returns an exit code if a command was
     /// recognized, or nil to fall through to launching the GUI.
     static func run(arguments: [String]) -> Int32? {
-        guard let command = arguments.first else { return nil }
+        guard let command = arguments.first, !isSystemLaunchArgument(command) else { return nil }
 
         switch command {
         case "start", "--start", "-s":
@@ -23,6 +23,13 @@ enum CLI {
             runHelp()
             return 1
         }
+    }
+
+    /// Flags the system, Xcode, or the XCTest host pass to every AppKit app
+    /// (e.g. `-NSTreatUnknownArgumentsAsOpen NO`). They aren't commands, so
+    /// they must fall through to the GUI rather than fail as unknown.
+    private static func isSystemLaunchArgument(_ argument: String) -> Bool {
+        ["-NS", "-Apple", "-psn_"].contains { argument.hasPrefix($0) }
     }
 
     private static func runAdd() {

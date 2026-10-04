@@ -10,34 +10,52 @@ import XCTest
 final class renderUITests: XCTestCase {
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
     @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
+    func testLaunchShowsEmptyState() throws {
         let app = XCUIApplication()
         app.launch()
 
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.staticTexts["No Video Selected"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Open Video…"].exists)
     }
 
+    /// End-to-end: pick an .mp4 through the real open panel and check the
+    /// app is still running with the file loaded. Picking a file used to
+    /// crash the app the moment the player view appeared.
     @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+    func testOpeningVideoPlaysWithoutCrashing() async throws {
+        let video = try await VideoFixture.makeMP4()
+        defer { try? FileManager.default.removeItem(at: video) }
+
+        let app = XCUIApplication()
+        app.launch()
+
+        app.buttons["Open Video…"].click()
+        let panel = app.sheets.firstMatch.exists ? app.sheets.firstMatch : app.dialogs.firstMatch
+        XCTAssertTrue(panel.waitForExistence(timeout: 5), "open panel never appeared")
+
+        // Go-to-folder accepts a full file path and selects that file.
+        panel.typeKey("g", modifierFlags: [.command, .shift])
+        panel.typeText(video.path)
+        panel.typeKey(.return, modifierFlags: [])
+        let openButton = panel.buttons["Open"]
+        XCTAssertTrue(openButton.waitForExistence(timeout: 5))
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: openButton)
+        await fulfillment(of: [enabled], timeout: 5)
+        openButton.click()
+
+        XCTAssertTrue(
+            app.staticTexts[video.lastPathComponent].waitForExistence(timeout: 10),
+            "loaded file name never appeared (app state: \(app.state.rawValue))"
+        )
+        XCTAssertEqual(app.state, .runningForeground, "app crashed after opening the video")
+        XCTAssertFalse(app.staticTexts["No Video Selected"].exists)
+
+        // Give playback a moment, then confirm the app survived it.
+        try await Task.sleep(for: .seconds(2))
+        XCTAssertEqual(app.state, .runningForeground, "app crashed during playback")
     }
 }

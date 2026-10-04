@@ -6,20 +6,20 @@
 //
 
 import SwiftUI
-import AVKit
 import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @State private var player: AVPlayer?
+    @State private var model: VideoPlayerModel
     @State private var isImporterPresented = false
-    @State private var currentFileName: String?
-    @State private var errorMessage: String?
-    @State private var accessedURL: URL?
+
+    init(model: VideoPlayerModel = VideoPlayerModel()) {
+        _model = State(initialValue: model)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            if let player {
-                VideoPlayer(player: player)
+            if let player = model.player {
+                PlayerView(player: player)
                     .background(Color.black)
             } else {
                 ContentUnavailableView(
@@ -41,7 +41,7 @@ struct ContentView: View {
                 }
                 .keyboardShortcut("o", modifiers: .command)
 
-                if let currentFileName {
+                if let currentFileName = model.currentFileName {
                     Text(currentFileName)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -50,7 +50,7 @@ struct ContentView: View {
 
                 Spacer()
 
-                if let errorMessage {
+                if let errorMessage = model.errorMessage {
                     Text(errorMessage)
                         .foregroundStyle(.red)
                         .lineLimit(1)
@@ -64,40 +64,9 @@ struct ContentView: View {
             allowedContentTypes: [.mpeg4Movie],
             allowsMultipleSelection: false
         ) { result in
-            handleImportResult(result)
+            model.handleImportResult(result)
         }
-        .onDisappear { releaseAccess() }
-    }
-
-    private func handleImportResult(_ result: Result<[URL], Error>) {
-        errorMessage = nil
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            load(url: url)
-        case .failure(let error):
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func load(url: URL) {
-        releaseAccess()
-
-        guard url.startAccessingSecurityScopedResource() else {
-            errorMessage = "Couldn't access \(url.lastPathComponent)."
-            return
-        }
-        accessedURL = url
-
-        let newPlayer = AVPlayer(url: url)
-        player = newPlayer
-        currentFileName = url.lastPathComponent
-        newPlayer.play()
-    }
-
-    private func releaseAccess() {
-        accessedURL?.stopAccessingSecurityScopedResource()
-        accessedURL = nil
+        .onDisappear { model.unload() }
     }
 }
 

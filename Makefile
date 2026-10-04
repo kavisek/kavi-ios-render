@@ -8,7 +8,7 @@ TAP_URL := git@github.com:kavisek/kavi-ios-render.git
 FORMULA := $(TAP)/render
 RELEASE_APP := $(CURDIR)/build-release/Build/Products/Release/render.app
 
-.PHONY: start build build-release clean install
+.PHONY: start build test build-release clean install
 
 # Builds for macOS and opens the resulting .app directly (no simulator).
 start: build
@@ -21,6 +21,12 @@ start: build
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
 		-destination '$(DESTINATION)' build
+
+# Runs the unit tests (model, CLI, view rendering) and the end-to-end UI
+# tests, which drive the real open panel to load a generated .mp4.
+test:
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) \
+		-destination '$(DESTINATION)' test
 
 clean:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIGURATION) clean

@@ -84,7 +84,7 @@ establishing connection") and would break launching from Xcode too.
 
 ## Consequences
 
-- Playback works. All 23 unit and UI tests pass, and no new crash reports
+- Playback works. All 28 unit and UI test cases pass, and no new crash reports
   appear.
 - We lose SwiftUI `VideoPlayer` conveniences such as its overlay content
   parameter. Anything similar now needs SwiftUI layered over `PlayerView` or
